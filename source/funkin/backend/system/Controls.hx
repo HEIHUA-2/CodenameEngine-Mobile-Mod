@@ -101,6 +101,7 @@ enum Control
 	CHANGE_MODE;
 	//CHEAT;
 	SWITCHMOD;
+	FPS_COUNTER;
 
 	// Debugs
 	DEV_ACCESS;

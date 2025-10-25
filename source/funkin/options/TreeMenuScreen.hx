@@ -62,7 +62,7 @@ class TreeMenuScreen extends FlxSpriteGroup {
 	var curFloatOption:ITreeFloatOption;
 	var __firstFrame:Bool = true;
 
-	public function new(name:String, desc:String, ?prefix:String, ?objects:Array<FlxSprite>, ?menuTPadModes:Array<String>) {
+	public function new(name:String, desc:String, prefix:String = "", ?objects:Array<FlxSprite>, ?menuTPadModes:Array<String>) {
 		super();
 		this.prefix = prefix;
 		rawName = name;
@@ -137,18 +137,18 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		updateItems();
 	}
 
+	dynamic function updateItem(object:FlxSprite, itemHeight:Float, centerY:Float, lerpRatio:Float) {
+		object.y = CoolUtil.fpsLerp(object.y, centerY - itemHeight * 0.5, lerpRatio);
+		object.x = x + 100 - Math.pow(Math.abs((object.y - (FlxG.height - itemHeight) * 0.5) / itemHeight / FlxG.height * FlxG.initialHeight), 1.6) * 15;
+	}
+
 	public function updateItems(force = false) {
 		var r = force ? 1 : 0.25, initY = FlxG.height * 0.5;
 		var i = curSelected, y = initY, object:FlxSprite = null, itemHeight:Float = 0;
 
-		inline function updateItem() {
-			object.y = CoolUtil.fpsLerp(object.y, y - itemHeight * 0.5, r);
-			object.x = x + 100 - Math.pow(Math.abs((object.y - (FlxG.height - itemHeight) * 0.5) / itemHeight / FlxG.height * FlxG.initialHeight), 1.6) * 15;
-		}
-
 		while (i < length) if ((object = members[i++]) != null) {
 			itemHeight = object.height;
-			updateItem();
+			updateItem(object, itemHeight, y, r);
 			y += itemHeight;
 		}
 
@@ -156,7 +156,7 @@ class TreeMenuScreen extends FlxSpriteGroup {
 		i = curSelected;
 		while (i-- > 0) if ((object = members[i]) != null) {
 			y -= (itemHeight = object.height);
-			updateItem();
+			updateItem(object, itemHeight, y, r);
 		}
 	}
 
