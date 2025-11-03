@@ -16,11 +16,11 @@ import funkin.backend.utils.NativeAPI;
 import funkin.options.Options;
 import mobile.objects.TouchButton;
 import mobile.objects.TouchPad;
-import mobile.flixel.system.FlxShader;
 import mobile.funkin.backend.utils.MobileData;
 import mobile.funkin.backend.system.input.MobileInputID;
 import mobile.funkin.backend.system.input.MobileInputManager;
 #end
+import mobile.flixel.system.FlxShader;
 import mobile.funkin.backend.utils.StorageUtil;
 
 #if android

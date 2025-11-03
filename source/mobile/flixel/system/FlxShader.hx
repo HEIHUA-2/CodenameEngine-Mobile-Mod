@@ -51,11 +51,8 @@ class FlxShader extends OriginalFlxShader
 		@:privateAccess
 		var gl = __context.gl;
 
-		var prefix = '#version ${Flags.DEFAULT_GLSL_VERSION}\n';
+		var prefix = '';
 
-		#if (js && html5)
-		prefix += (precisionHint == FULL ? "precision mediump float;\n" : "precision lowp float;\n");
-		#else
 		prefix += "#ifdef GL_ES\n"
 			+ (precisionHint == FULL ? "#ifdef GL_FRAGMENT_PRECISION_HIGH\n"
 				+ "precision highp float;\n"
@@ -63,18 +60,14 @@ class FlxShader extends OriginalFlxShader
 				+ "precision mediump float;\n"
 				+ "#endif\n" : "precision lowp float;\n")
 			+ "#endif\n\n";
-		#end
 
+		#if !web
 		prefix += 'out vec4 output_FragColor;\n';
-		var vertex = prefix
-			+ glVertexSource.replace("attribute", "in")
-				.replace("varying", "out")
-				.replace("texture2D", "texture")
-				.replace("gl_FragColor", "output_FragColor");
-		var fragment = prefix + glFragmentSource.replace("varying", "in").replace("texture2D", "texture").replace("gl_FragColor", "output_FragColor");
+		#end
+		var vertex = prefix + #if web glVertexSource #else glVertexSource.replace("attribute", "in").replace("varying", "out").replace("texture2D", "texture").replace("gl_FragColor", "output_FragColor") #end;
+		var fragment = prefix + #if web glFragmentSource #else glFragmentSource.replace("varying", "in").replace("texture2D", "texture").replace("gl_FragColor", "output_FragColor") #end;
 
 		var id = vertex + fragment;
-
 		@:privateAccess
 		if (__context.__programs.exists(id) && save)
 		{
@@ -87,7 +80,6 @@ class FlxShader extends OriginalFlxShader
 
 			@:privateAccess
 			program.__glProgram = __createGLProgram(vertex, fragment);
-
 			@:privateAccess
 			if (save)
 				__context.__programs.set(id, program);
