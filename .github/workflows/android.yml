@@ -9,40 +9,94 @@ jobs:
     name: Android Build
     permissions: write-all
     runs-on: macos-15
+    env:
+      # 设置明确的 HXCPP 路径
+      HXCPP_COMPILE_CACHE: /Users/runner/.hxcpp
     steps:
       - name: Pulling the new commit
         uses: actions/checkout@v4
+        
       - name: Setting up Haxe
         uses: krdlab/setup-haxe@v2
         with:
           haxe-version: 4.3.7
+          
+      - name: Setup Android NDK
+        run: |
+          # 确保 NDK 环境变量设置正确
+          echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          
       - name: Restore existing build cache for faster compilation
         uses: actions/cache@v4.2.3
         with:
-          # not caching the bin folder to prevent asset duplication and stuff like that
-          key: cache-build-android
+          key: cache-build-android-${{ runner.os }}-${{ hashFiles('**/build.hxml', '**/Project.xml') }}
           path: |
             .haxelib/
             export/release/android/haxe/
             export/release/android/obj/
-      - run: |
-          echo "HXCPP_COMPILE_CACHE=~/.hxcpp" >> $GITHUB_ENV
+            ~/.hxcpp/  # 添加 hxcpp 缓存
+            ~/.lime/   # 添加 lime 缓存
+            
+      - name: Clear hxcpp cache if corrupted
+        run: |
+          # 有时旧的缓存会损坏，可以清理特定目录
+          rm -rf ~/.hxcpp/hxcpp_zlib_impl
+          rm -rf ~/.hxcpp/zlib_sources
+          rm -rf ~/.hxcpp/hxcpp_zip_api
+          
       - name: Installing/Updating libraries
         run: |
           haxe -cp commandline -D analyzer-optimize --run Main setup -s
+          
+      - name: Pre-compile essential libraries for Android
+        run: |
+          echo "Pre-compiling Android libraries..."
+          
+          # 编译 zlib 库（这是错误中缺少的）
+          haxelib run hxcpp -Dandroid -DHXCPP_ARM64 -DANDROID_PLATFORM=24 /Users/runner/.haxelib/hxcpp/git/tools/hxcpp/BuildTool.hxml --verbose || true
+          
+          # 或者使用 lime 编译依赖
+          haxelib run lime rebuild android -clean -verbose || true
+          
+          # 检查库文件是否已创建
+          echo "Checking for compiled libraries..."
+          find ~/.hxcpp -name "*.a" 2>/dev/null | head -20
+          
       - name: Configuring Android
         run: |
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_LATEST_HOME
           haxelib run lime config JAVA_HOME $JAVA_HOME_21_arm64
           haxelib run lime config ANDROID_SETUP true
+          
+          # 验证配置
+          haxelib run lime display config
+          
       - name: Building the game
-        run: haxelib run lime build android -final
+        run: |
+          # 设置详细输出以调试
+          export HXCPP_VERBOSE=1
+          export HXCPP_COMPILE_THREADS=2
+          
+          # 先清理再构建
+          haxelib run lime clean android
+          haxelib run lime build android -final -verbose
+          
+      - name: Verify build artifacts
+        run: |
+          echo "Checking for APK file..."
+          find export/release/android -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+          
+          echo "Checking for .so files..."
+          find export/release/android -name "*.so" -type f 2>/dev/null || echo "No .so files found"
+          
       - name: Uploading artifact (entire build)
         uses: actions/upload-artifact@v4
         with:
           name: Codename Engine Android
           path: export/release/android/bin/app/build/outputs/apk/release/*.apk
+          
       - name: Clearing already existing cache
         uses: actions/github-script@v6
         with:
@@ -52,7 +106,7 @@ jobs:
               repo: context.repo.repo,
             })
             for (const cache of caches.data.actions_caches) {
-              if (cache.key == "cache-build-android") {
+              if (cache.key.startsWith("cache-build-android")) {
                 console.log('Clearing ' + cache.key + '...')
                 await github.rest.actions.deleteActionsCacheById({
                   owner: context.repo.owner,
@@ -62,12 +116,14 @@ jobs:
                 console.log("Cache cleared.")
               }
             }
+            
       - name: Uploading new cache
         uses: actions/cache@v4.2.3
         with:
-          # caching again since for some reason it doesnt work with the first post cache shit
-          key: cache-build-android
+          key: cache-build-android-${{ runner.os }}-${{ hashFiles('**/build.hxml', '**/Project.xml') }}
           path: |
             .haxelib/
             export/release/android/haxe/
             export/release/android/obj/
+            ~/.hxcpp/
+            ~/.lime/
