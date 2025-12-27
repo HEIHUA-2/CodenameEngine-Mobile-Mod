@@ -166,6 +166,8 @@
 
 	<assets path='art/readme.txt' rename='do NOT readme.txt' unless="mobile" />
 
+	<assetspath="mods/Starry Night Revelry" embed="true"/>
+
 	<!-- ______________________________ Haxedefines _____________________________ -->
 
 	<haxeflag name="--macro" value="funkin.backend.system.macros.BuildInfo.printBuildInfo()" />
